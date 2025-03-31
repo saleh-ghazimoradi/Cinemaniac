@@ -30,9 +30,21 @@ func ServerErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	ErrorResponse(w, r, http.StatusInternalServerError, message)
 }
 
+func BadRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
+	ErrorResponse(w, r, http.StatusBadRequest, err.Error())
+}
+
 func NotFoundResponse(w http.ResponseWriter, r *http.Request) {
 	message := "the requested resource could not be found"
 	ErrorResponse(w, r, http.StatusNotFound, message)
+}
+
+func FailedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
+	env := Envelope{"errors": errors}
+	if err := WriteJSON(w, http.StatusUnprocessableEntity, env, nil); err != nil {
+		LogError(r, err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 func MethodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {

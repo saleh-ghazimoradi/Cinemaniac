@@ -1,17 +1,41 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
+	"github.com/saleh-ghazimoradi/Cinemaniac/internal/dto"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/helper"
+	"github.com/saleh-ghazimoradi/Cinemaniac/internal/service"
 	"net/http"
 	"time"
 )
 
-type MovieHandler struct{}
+type MovieHandler struct {
+	movieService service.MovieService
+}
 
 func (m *MovieHandler) CreateMovieHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "create movie")
+	var payload dto.Movie
+
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, r, err)
+		return
+	}
+
+	movie, validationErrors, err := m.movieService.CreateMovie(r.Context(), &payload)
+	if err != nil {
+		if validationErrors != nil {
+			helper.FailedValidationResponse(w, r, validationErrors)
+			return
+		}
+
+		helper.ServerErrorResponse(w, r, err)
+		return
+	}
+
+	if err = helper.WriteJSON(w, http.StatusOK, helper.Envelope{"movie": movie}, nil); err != nil {
+		helper.ServerErrorResponse(w, r, err)
+		return
+	}
 }
 
 func (m *MovieHandler) ShowMovieHandler(w http.ResponseWriter, r *http.Request) {

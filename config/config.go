@@ -15,6 +15,7 @@ type Config struct {
 type Server struct {
 	BodyLimit    int           `env:"BODY_LIMIT"` // 1024 * 1024
 	Env          string        `env:"ENVIRONMENT"`
+	Version      string        `env:"VERSION"`
 	WriteTimeout time.Duration `env:"WRITE_TIMEOUT"` // 10s
 	ReadTimeout  time.Duration `env:"READ_TIMEOUT"`  // 5s
 	IdleTimeout  time.Duration `env:"IDLE_TIMEOUT"`  // 30s

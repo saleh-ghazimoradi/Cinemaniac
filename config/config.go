@@ -10,6 +10,7 @@ var AppConfig *Config
 type Config struct {
 	Server   Server
 	Database Database
+	CTX      CTX
 }
 
 type Server struct {
@@ -37,6 +38,10 @@ type Database struct {
 	MaxLifetime      time.Duration `env:"DB_MAX_LIFETIME"`
 	MaxIdleTime      time.Duration `env:"DB_MAX_IDLE_TIME"`
 	Timeout          time.Duration `env:"DB_TIMEOUT"`
+}
+
+type CTX struct {
+	Timeout time.Duration `env:"CTX_TIMEOUT"`
 }
 
 func LoadConfig() error {

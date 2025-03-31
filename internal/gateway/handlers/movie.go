@@ -59,6 +59,8 @@ func (m *MovieHandler) ShowMovieHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func NewMovieHandler() *MovieHandler {
-	return &MovieHandler{}
+func NewMovieHandler(movieService service.MovieService) *MovieHandler {
+	return &MovieHandler{
+		movieService: movieService,
+	}
 }

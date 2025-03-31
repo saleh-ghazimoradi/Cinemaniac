@@ -3,7 +3,6 @@ package handlers
 import (
 	"github.com/saleh-ghazimoradi/Cinemaniac/config"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/helper"
-	"github.com/saleh-ghazimoradi/Cinemaniac/slg"
 	"net/http"
 )
 
@@ -20,8 +19,7 @@ func (h *HealthHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := helper.WriteJSON(w, http.StatusOK, env, nil); err != nil {
-		slg.Logger.Error(err.Error())
-		http.Error(w, "The server encountered an internal error", http.StatusInternalServerError)
+		helper.ServerErrorResponse(w, r, err)
 	}
 }
 func NewHealthHandler() *HealthHandler {

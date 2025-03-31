@@ -4,6 +4,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/gateway/handlers"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/helper"
+	"github.com/saleh-ghazimoradi/Cinemaniac/internal/middleware"
 	"net/http"
 )
 
@@ -19,5 +20,5 @@ func RegisterRoutes() http.Handler {
 	healthCheckRoutes(router, healthHandler)
 	movieRoutes(router, movieHandler)
 
-	return router
+	return middleware.RecoverPanic(router)
 }

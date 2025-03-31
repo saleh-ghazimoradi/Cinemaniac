@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"github.com/saleh-ghazimoradi/Cinemaniac/config"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -12,15 +14,25 @@ var rootCmd = &cobra.Command{
 	Short: "A brief description of your application",
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	err := rootCmd.Execute()
+	err := os.Setenv("TZ", time.UTC.String())
+	if err != nil {
+		panic(err)
+	}
+
+	err = rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
 
 func init() {
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	cobra.OnInitialize(initConfig)
+}
+
+func initConfig() {
+	err := config.LoadConfig()
+	if err != nil {
+		//slg.Logger.Error("there went something wrong while loading config file", "error", err)
+	}
 }

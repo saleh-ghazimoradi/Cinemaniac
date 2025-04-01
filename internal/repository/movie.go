@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/lib/pq"
+	"github.com/saleh-ghazimoradi/Cinemaniac/config"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
 )
 
@@ -40,6 +41,9 @@ func (m *movieRepository) CreateMovie(ctx context.Context, movie *domain.Movie) 
 }
 
 func (m *movieRepository) GetMovieById(ctx context.Context, id int64) (*domain.Movie, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), config.AppConfig.CTX.Timeout)
+	defer cancel()
+
 	query := `
         SELECT id, created_at, title, year, runtime, genres, version
         FROM movies
@@ -47,7 +51,7 @@ func (m *movieRepository) GetMovieById(ctx context.Context, id int64) (*domain.M
 
 	movie := &domain.Movie{}
 
-	if err := exec(m.dbRead, m.tx).QueryRow(query, id).Scan(
+	if err := exec(m.dbRead, m.tx).QueryRowContext(ctx, query, id).Scan(
 		&movie.ID,
 		&movie.CreatedAt,
 		&movie.Title,
@@ -72,28 +76,44 @@ func (m *movieRepository) GetMovies(ctx context.Context) ([]*domain.Movie, error
 }
 
 func (m *movieRepository) UpdateMovie(ctx context.Context, movie *domain.Movie) (*domain.Movie, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), config.AppConfig.CTX.Timeout)
+	defer cancel()
+
 	query := `
         UPDATE movies 
         SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1
-        WHERE id = $5
+        WHERE id = $5 AND version = $6
         RETURNING version`
 
-	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres), movie.ID}
-
-	if err := exec(m.dbWrite, m.tx).QueryRowContext(ctx, query, args...).Scan(&movie.Version); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrRecordNotFound
-		}
-		return nil, err
+	args := []any{
+		movie.Title,
+		movie.Year,
+		movie.Runtime,
+		pq.Array(movie.Genres),
+		movie.ID,
+		movie.Version,
 	}
 
+	if err := exec(m.dbWrite, m.tx).QueryRowContext(ctx, query, args...).Scan(&movie.Version); err != nil {
+		if err != nil {
+			switch {
+			case errors.Is(err, sql.ErrNoRows):
+				return nil, ErrEditConflict
+			default:
+				return nil, err
+			}
+		}
+	}
 	return movie, nil
 }
 
 func (m *movieRepository) DeleteMovie(ctx context.Context, id int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), config.AppConfig.CTX.Timeout)
+	defer cancel()
+
 	query := `DELETE FROM movies WHERE id = $1`
 
-	resutl, err := exec(m.dbWrite, m.tx).Exec(query, id)
+	resutl, err := exec(m.dbWrite, m.tx).ExecContext(ctx, query, id)
 	if err != nil {
 		return err
 	}

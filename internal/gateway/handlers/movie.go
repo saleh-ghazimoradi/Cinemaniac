@@ -83,14 +83,16 @@ func (m *MovieHandler) UpdateMovieHandler(w http.ResponseWriter, r *http.Request
 	updatedMovie, validationErrors, err := m.movieService.UpdateMovie(r.Context(), id, &input)
 	if err != nil {
 		switch {
-		case errors.Is(err, repository.ErrRecordNotFound):
-			helper.NotFoundResponse(w, r)
+		case errors.Is(err, repository.ErrEditConflict):
+			helper.EditConflictResponse(w, r)
+			return
 		case validationErrors != nil:
 			helper.FailedValidationResponse(w, r, validationErrors)
+			return
 		default:
 			helper.ServerErrorResponse(w, r, err)
+			return
 		}
-		return
 	}
 
 	if err := helper.WriteJSON(w, http.StatusOK, helper.Envelope{"movie": updatedMovie}, nil); err != nil {

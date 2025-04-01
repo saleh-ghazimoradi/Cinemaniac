@@ -47,6 +47,11 @@ func FailedValidationResponse(w http.ResponseWriter, r *http.Request, errors map
 	}
 }
 
+func EditConflictResponse(w http.ResponseWriter, r *http.Request) {
+	message := "unable to update the record due to an edit conflict, please try again"
+	ErrorResponse(w, r, http.StatusConflict, message)
+}
+
 func MethodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("the %s method is not supported for this resource", r.Method)
 	ErrorResponse(w, r, http.StatusMethodNotAllowed, message)

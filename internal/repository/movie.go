@@ -91,6 +91,22 @@ func (m *movieRepository) UpdateMovie(ctx context.Context, movie *domain.Movie) 
 }
 
 func (m *movieRepository) DeleteMovie(ctx context.Context, id int64) error {
+	query := `DELETE FROM movies WHERE id = $1`
+
+	resutl, err := exec(m.dbWrite, m.tx).Exec(query, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := resutl.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+
 	return nil
 }
 

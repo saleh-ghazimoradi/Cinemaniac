@@ -98,6 +98,30 @@ func (m *MovieHandler) UpdateMovieHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (m *MovieHandler) DeleteMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := helper.ReadParams(r)
+	if err != nil {
+		helper.NotFoundResponse(w, r)
+		return
+	}
+
+	err = m.movieService.DeleteMovie(r.Context(), id)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.NotFoundResponse(w, r)
+		default:
+			helper.ServerErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	if err = helper.WriteJSON(w, http.StatusOK, helper.Envelope{"message": "movie successfully deleted"}, nil); err != nil {
+		helper.ServerErrorResponse(w, r, err)
+	}
+}
+
 func NewMovieHandler(movieService service.MovieService) *MovieHandler {
 	return &MovieHandler{
 		movieService: movieService,

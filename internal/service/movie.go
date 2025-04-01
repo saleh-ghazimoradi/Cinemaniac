@@ -16,6 +16,7 @@ type MovieService interface {
 	CreateMovie(ctx context.Context, input *dto.Movie) (*domain.Movie, map[string]string, error)
 	GetMovieById(ctx context.Context, id int64) (*domain.Movie, error)
 	UpdateMovie(ctx context.Context, id int64, input *dto.UpdateMovie) (*domain.Movie, map[string]string, error)
+	DeleteMovie(ctx context.Context, id int64) error
 }
 
 type movieService struct {
@@ -121,6 +122,13 @@ func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.Upd
 	}
 
 	return updatedMovie, nil, nil
+}
+
+func (m *movieService) DeleteMovie(ctx context.Context, id int64) error {
+	return m.txService.WithTx(ctx, func(tx *sql.Tx) error {
+		txRepo := m.movieRepository.WithTx(ctx, tx)
+		return txRepo.DeleteMovie(ctx, id)
+	})
 }
 
 func NewMovieService(movieRepository repository.MovieRepository, txService transaction.TxService) MovieService {

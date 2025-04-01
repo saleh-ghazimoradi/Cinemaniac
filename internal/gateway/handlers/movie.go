@@ -64,6 +64,18 @@ func (m *MovieHandler) ShowMovieHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (m *MovieHandler) GetMoviesHandler(w http.ResponseWriter, r *http.Request) {
+	movies, err := m.movieService.GetMovies(r.Context())
+	if err != nil {
+		helper.ServerErrorResponse(w, r, err)
+		return
+	}
+
+	if err = helper.WriteJSON(w, http.StatusOK, helper.Envelope{"movie": movies}, nil); err != nil {
+		helper.ServerErrorResponse(w, r, err)
+	}
+}
+
 func (m *MovieHandler) UpdateMovieHandler(w http.ResponseWriter, r *http.Request) {
 
 	//TODO: handle the update validation error

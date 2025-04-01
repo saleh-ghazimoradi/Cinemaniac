@@ -72,7 +72,41 @@ func (m *movieRepository) GetMovieById(ctx context.Context, id int64) (*domain.M
 }
 
 func (m *movieRepository) GetMovies(ctx context.Context) ([]*domain.Movie, error) {
-	return nil, nil
+	ctx, cancel := context.WithTimeout(ctx, config.AppConfig.CTX.Timeout)
+	defer cancel()
+
+	var movies []*domain.Movie
+	query := `SELECT id, created_at, title, year, runtime, genres, version FROM movies`
+
+	rows, err := exec(m.dbRead, m.tx).QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var movie domain.Movie
+		err = rows.Scan(
+			&movie.ID,
+			&movie.CreatedAt,
+			&movie.Title,
+			&movie.Year,
+			&movie.Runtime,
+			pq.Array(&movie.Genres),
+			&movie.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		movies = append(movies, &movie)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return movies, nil
 }
 
 func (m *movieRepository) UpdateMovie(ctx context.Context, movie *domain.Movie) (*domain.Movie, error) {

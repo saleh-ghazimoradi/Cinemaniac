@@ -15,6 +15,7 @@ import (
 type MovieService interface {
 	CreateMovie(ctx context.Context, input *dto.Movie) (*domain.Movie, map[string]string, error)
 	GetMovieById(ctx context.Context, id int64) (*domain.Movie, error)
+	GetMovies(ctx context.Context) ([]*domain.Movie, error)
 	UpdateMovie(ctx context.Context, id int64, input *dto.UpdateMovie) (*domain.Movie, map[string]string, error)
 	DeleteMovie(ctx context.Context, id int64) error
 }
@@ -65,6 +66,10 @@ func (m *movieService) GetMovieById(ctx context.Context, id int64) (*domain.Movi
 	return movie, nil
 }
 
+func (m *movieService) GetMovies(ctx context.Context) ([]*domain.Movie, error) {
+	return m.movieRepository.GetMovies(ctx)
+}
+
 func (m *movieService) fetchMovie(ctx context.Context, id int64) (*domain.Movie, error) {
 	return m.movieRepository.GetMovieById(ctx, id)
 }
@@ -74,16 +79,13 @@ func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.Upd
 	var validationErrors map[string]string
 
 	err := m.txService.WithTx(ctx, func(tx *sql.Tx) error {
-		// Get repository with transaction
 		txRepo := m.movieRepository.WithTx(ctx, tx)
 
-		// 1. Fetch existing movie
 		movie, err := txRepo.GetMovieById(ctx, id)
 		if err != nil {
 			return err
 		}
 
-		// 2. Apply updates
 		if input.Title != nil {
 			movie.Title = *input.Title
 		}
@@ -97,7 +99,6 @@ func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.Upd
 			movie.Genres = input.Genres
 		}
 
-		// 3. Validate
 		v := validator.New()
 		domain.ValidateMovie(v, movie)
 		if !v.Valid() {
@@ -105,7 +106,6 @@ func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.Upd
 			return errors.New("validation failed")
 		}
 
-		// 4. Update
 		updatedMovie, err = txRepo.UpdateMovie(ctx, movie)
 		return err
 	})

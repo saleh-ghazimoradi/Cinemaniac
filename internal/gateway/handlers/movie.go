@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
-	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/dto"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/helper"
+	"github.com/saleh-ghazimoradi/Cinemaniac/internal/repository"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/service"
 	"net/http"
-	"time"
 )
 
 type MovieHandler struct {
@@ -48,13 +48,15 @@ func (m *MovieHandler) ShowMovieHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	movie := domain.Movie{
-		ID:        id,
-		CreatedAt: time.Now(),
-		Title:     "The Black List",
-		Runtime:   102,
-		Genres:    []string{"drama", "criminal", "FBI"},
-		Version:   1,
+	movie, err := m.movieService.GetMovieById(r.Context(), id)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.NotFoundResponse(w, r)
+		default:
+			helper.ServerErrorResponse(w, r, err)
+		}
+		return
 	}
 
 	if err = helper.WriteJSON(w, http.StatusOK, helper.Envelope{"movie": movie}, nil); err != nil {

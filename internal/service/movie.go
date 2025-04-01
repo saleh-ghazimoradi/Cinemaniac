@@ -14,6 +14,7 @@ import (
 
 type MovieService interface {
 	CreateMovie(ctx context.Context, input *dto.Movie) (*domain.Movie, map[string]string, error)
+	GetMovieById(ctx context.Context, id int64) (*domain.Movie, error)
 }
 
 type movieService struct {
@@ -52,6 +53,14 @@ func (m *movieService) CreateMovie(ctx context.Context, input *dto.Movie) (*doma
 	}
 
 	return createdMovie, nil, nil
+}
+
+func (m *movieService) GetMovieById(ctx context.Context, id int64) (*domain.Movie, error) {
+	movie, err := m.movieRepository.GetMovieById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return movie, nil
 }
 
 func NewMovieService(movieRepository repository.MovieRepository, txService transaction.TxService) MovieService {

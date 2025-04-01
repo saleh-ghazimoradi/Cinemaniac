@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/lib/pq"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
 )
@@ -39,7 +40,31 @@ func (m *movieRepository) CreateMovie(ctx context.Context, movie *domain.Movie) 
 }
 
 func (m *movieRepository) GetMovieById(ctx context.Context, id int64) (*domain.Movie, error) {
-	return nil, nil
+	query := `
+        SELECT id, created_at, title, year, runtime, genres, version
+        FROM movies
+        WHERE id = $1`
+
+	movie := &domain.Movie{}
+
+	if err := exec(m.dbRead, m.tx).QueryRow(query, id).Scan(
+		&movie.ID,
+		&movie.CreatedAt,
+		&movie.Title,
+		&movie.Year,
+		&movie.Runtime,
+		pq.Array(&movie.Genres),
+		&movie.Version,
+	); err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return movie, nil
 }
 
 func (m *movieRepository) GetMovies(ctx context.Context) ([]*domain.Movie, error) {

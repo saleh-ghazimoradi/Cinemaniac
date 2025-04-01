@@ -4,15 +4,24 @@ import (
 	"github.com/saleh-ghazimoradi/Cinemaniac/config"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/gateway/routes"
 	"github.com/saleh-ghazimoradi/Cinemaniac/slg"
+	"github.com/saleh-ghazimoradi/Cinemaniac/utils"
 	"log/slog"
 	"net/http"
 	"os"
 )
 
 func Server() error {
+
+	db, err := utils.DBConnection()
+	if err != nil {
+		return err
+	}
+
+	defer db.Close()
+
 	server := &http.Server{
 		Addr:         config.AppConfig.Server.Port,
-		Handler:      routes.RegisterRoutes(),
+		Handler:      routes.RegisterRoutes(db),
 		IdleTimeout:  config.AppConfig.Server.IdleTimeout,
 		ReadTimeout:  config.AppConfig.Server.ReadTimeout,
 		WriteTimeout: config.AppConfig.Server.WriteTimeout,

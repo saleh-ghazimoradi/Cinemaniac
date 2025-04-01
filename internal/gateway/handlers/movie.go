@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/dto"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/helper"
@@ -32,9 +33,11 @@ func (m *MovieHandler) CreateMovieHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err = helper.WriteJSON(w, http.StatusOK, helper.Envelope{"movie": movie}, nil); err != nil {
+	headers := make(http.Header)
+	headers.Set("Location", fmt.Sprintf("/v1/movies/%d", movie.ID))
+
+	if err = helper.WriteJSON(w, http.StatusCreated, helper.Envelope{"movie": movie}, headers); err != nil {
 		helper.ServerErrorResponse(w, r, err)
-		return
 	}
 }
 

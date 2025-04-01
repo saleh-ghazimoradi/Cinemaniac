@@ -8,6 +8,7 @@ import (
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/middleware"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/repository"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/service"
+	"github.com/saleh-ghazimoradi/Cinemaniac/internal/transaction"
 	"net/http"
 )
 
@@ -19,7 +20,8 @@ func RegisterRoutes(db *sql.DB) http.Handler {
 
 	movieRepository := repository.NewMovieRepository(db, db)
 
-	movieService := service.NewMovieService(movieRepository)
+	txService := transaction.NewTXService(db)
+	movieService := service.NewMovieService(movieRepository, txService)
 
 	healthHandler := handlers.NewHealthHandler()
 	movieHandler := handlers.NewMovieHandler(movieService)

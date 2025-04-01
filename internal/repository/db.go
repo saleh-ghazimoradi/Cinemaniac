@@ -7,6 +7,6 @@ func exec(db *sql.DB, tx *sql.Tx) *sql.Tx {
 		return tx
 	}
 	tx, _ = db.Begin()
-	
+
 	return tx
 }

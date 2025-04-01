@@ -30,7 +30,7 @@ func (m *movieRepository) CreateMovie(ctx context.Context, movie *domain.Movie) 
 
 	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
 
-	err := m.dbWrite.QueryRowContext(ctx, query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+	err := exec(m.dbWrite, m.tx).QueryRowContext(ctx, query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 	if err != nil {
 		return nil, err
 	}

@@ -64,6 +64,40 @@ func (m *MovieHandler) ShowMovieHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (m *MovieHandler) UpdateMovieHandler(w http.ResponseWriter, r *http.Request) {
+
+	//TODO: handle the update validation error
+
+	id, err := helper.ReadParams(r)
+	if err != nil {
+		helper.NotFoundResponse(w, r)
+		return
+	}
+
+	var input dto.UpdateMovie
+	if err := helper.ReadJSON(w, r, &input); err != nil {
+		helper.BadRequestResponse(w, r, err)
+		return
+	}
+
+	updatedMovie, validationErrors, err := m.movieService.UpdateMovie(r.Context(), id, &input)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.NotFoundResponse(w, r)
+		case validationErrors != nil:
+			helper.FailedValidationResponse(w, r, validationErrors)
+		default:
+			helper.ServerErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	if err := helper.WriteJSON(w, http.StatusOK, helper.Envelope{"movie": updatedMovie}, nil); err != nil {
+		helper.ServerErrorResponse(w, r, err)
+	}
+}
+
 func NewMovieHandler(movieService service.MovieService) *MovieHandler {
 	return &MovieHandler{
 		movieService: movieService,

@@ -15,6 +15,7 @@ import (
 type MovieService interface {
 	CreateMovie(ctx context.Context, input *dto.Movie) (*domain.Movie, map[string]string, error)
 	GetMovieById(ctx context.Context, id int64) (*domain.Movie, error)
+	UpdateMovie(ctx context.Context, id int64, input *dto.UpdateMovie) (*domain.Movie, map[string]string, error)
 }
 
 type movieService struct {
@@ -61,6 +62,65 @@ func (m *movieService) GetMovieById(ctx context.Context, id int64) (*domain.Movi
 		return nil, err
 	}
 	return movie, nil
+}
+
+func (m *movieService) fetchMovie(ctx context.Context, id int64) (*domain.Movie, error) {
+	return m.movieRepository.GetMovieById(ctx, id)
+}
+
+func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.UpdateMovie) (*domain.Movie, map[string]string, error) {
+	var updatedMovie *domain.Movie
+	var validationErrors map[string]string
+
+	err := m.txService.WithTx(ctx, func(tx *sql.Tx) error {
+		// Get repository with transaction
+		txRepo := m.movieRepository.WithTx(ctx, tx)
+
+		// 1. Fetch existing movie
+		movie, err := txRepo.GetMovieById(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		// 2. Apply updates
+		if input.Title != nil {
+			movie.Title = *input.Title
+		}
+		if input.Year != nil {
+			movie.Year = *input.Year
+		}
+		if input.Runtime != nil {
+			movie.Runtime = *input.Runtime
+		}
+		if input.Genres != nil {
+			movie.Genres = input.Genres
+		}
+
+		// 3. Validate
+		v := validator.New()
+		domain.ValidateMovie(v, movie)
+		if !v.Valid() {
+			validationErrors = v.Errors
+			return errors.New("validation failed")
+		}
+
+		// 4. Update
+		updatedMovie, err = txRepo.UpdateMovie(ctx, movie)
+		return err
+	})
+
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			return nil, nil, err
+		case validationErrors != nil:
+			return nil, validationErrors, nil
+		default:
+			return nil, nil, err
+		}
+	}
+
+	return updatedMovie, nil, nil
 }
 
 func NewMovieService(movieRepository repository.MovieRepository, txService transaction.TxService) MovieService {

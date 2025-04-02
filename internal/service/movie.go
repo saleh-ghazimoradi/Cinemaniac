@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/dto"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/repository"
@@ -13,10 +12,10 @@ import (
 )
 
 type MovieService interface {
-	CreateMovie(ctx context.Context, input *dto.Movie) (*domain.Movie, map[string]string, error)
+	CreateMovie(ctx context.Context, input *dto.Movie) (*domain.Movie, error)
 	GetMovieById(ctx context.Context, id int64) (*domain.Movie, error)
 	GetMovies(ctx context.Context) ([]*domain.Movie, error)
-	UpdateMovie(ctx context.Context, id int64, input *dto.UpdateMovie) (*domain.Movie, map[string]string, error)
+	UpdateMovie(ctx context.Context, id int64, input *dto.UpdateMovie) (*domain.Movie, error)
 	DeleteMovie(ctx context.Context, id int64) error
 }
 
@@ -25,7 +24,7 @@ type movieService struct {
 	txService       transaction.TxService
 }
 
-func (m *movieService) CreateMovie(ctx context.Context, input *dto.Movie) (*domain.Movie, map[string]string, error) {
+func (m *movieService) CreateMovie(ctx context.Context, input *dto.Movie) (*domain.Movie, error) {
 	v := validator.New()
 
 	movie := &domain.Movie{
@@ -37,9 +36,9 @@ func (m *movieService) CreateMovie(ctx context.Context, input *dto.Movie) (*doma
 
 	domain.ValidateMovie(v, movie)
 
-	if !v.Valid() {
+	if err := v.GetValidationError(); err != nil {
 		slg.Logger.Error("validation failed", "errors", v.Errors)
-		return nil, v.Errors, errors.New("validation failed")
+		return nil, err
 	}
 
 	var createdMovie *domain.Movie
@@ -52,10 +51,10 @@ func (m *movieService) CreateMovie(ctx context.Context, input *dto.Movie) (*doma
 
 	if err != nil {
 		slg.Logger.Error("error creating movie", "error", err)
-		return nil, nil, errors.New("error creating movie")
+		return nil, err
 	}
 
-	return createdMovie, nil, nil
+	return createdMovie, nil
 }
 
 func (m *movieService) GetMovieById(ctx context.Context, id int64) (*domain.Movie, error) {
@@ -74,9 +73,8 @@ func (m *movieService) fetchMovie(ctx context.Context, id int64) (*domain.Movie,
 	return m.movieRepository.GetMovieById(ctx, id)
 }
 
-func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.UpdateMovie) (*domain.Movie, map[string]string, error) {
+func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.UpdateMovie) (*domain.Movie, error) {
 	var updatedMovie *domain.Movie
-	var validationErrors map[string]string
 
 	err := m.txService.WithTx(ctx, func(tx *sql.Tx) error {
 		txRepo := m.movieRepository.WithTx(ctx, tx)
@@ -101,9 +99,8 @@ func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.Upd
 
 		v := validator.New()
 		domain.ValidateMovie(v, movie)
-		if !v.Valid() {
-			validationErrors = v.Errors
-			return errors.New("validation failed")
+		if err = v.GetValidationError(); err != nil {
+			return err
 		}
 
 		updatedMovie, err = txRepo.UpdateMovie(ctx, movie)
@@ -111,17 +108,10 @@ func (m *movieService) UpdateMovie(ctx context.Context, id int64, input *dto.Upd
 	})
 
 	if err != nil {
-		switch {
-		case errors.Is(err, repository.ErrRecordNotFound):
-			return nil, nil, err
-		case validationErrors != nil:
-			return nil, validationErrors, nil
-		default:
-			return nil, nil, err
-		}
+		return nil, err
 	}
 
-	return updatedMovie, nil, nil
+	return updatedMovie, nil
 }
 
 func (m *movieService) DeleteMovie(ctx context.Context, id int64) error {

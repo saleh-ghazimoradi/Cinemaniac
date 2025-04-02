@@ -7,6 +7,7 @@ import (
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/helper"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/repository"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/service"
+	"github.com/saleh-ghazimoradi/Cinemaniac/internal/validator"
 	"net/http"
 )
 
@@ -22,13 +23,13 @@ func (m *MovieHandler) CreateMovieHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	movie, validationErrors, err := m.movieService.CreateMovie(r.Context(), &payload)
+	movie, err := m.movieService.CreateMovie(r.Context(), &payload)
 	if err != nil {
-		if validationErrors != nil {
-			helper.FailedValidationResponse(w, r, validationErrors)
+		var valErr validator.ValidationError
+		if errors.As(err, &valErr) {
+			helper.FailedValidationResponse(w, r, valErr.Errors)
 			return
 		}
-
 		helper.ServerErrorResponse(w, r, err)
 		return
 	}
@@ -77,9 +78,6 @@ func (m *MovieHandler) GetMoviesHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (m *MovieHandler) UpdateMovieHandler(w http.ResponseWriter, r *http.Request) {
-
-	//TODO: handle the update validation error
-
 	id, err := helper.ReadParams(r)
 	if err != nil {
 		helper.NotFoundResponse(w, r)
@@ -92,19 +90,23 @@ func (m *MovieHandler) UpdateMovieHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	updatedMovie, validationErrors, err := m.movieService.UpdateMovie(r.Context(), id, &input)
+	updatedMovie, err := m.movieService.UpdateMovie(r.Context(), id, &input)
 	if err != nil {
+		var valErr validator.ValidationError
+		if errors.As(err, &valErr) {
+			helper.FailedValidationResponse(w, r, valErr.Errors)
+			return
+		}
+		
 		switch {
 		case errors.Is(err, repository.ErrEditConflict):
 			helper.EditConflictResponse(w, r)
-			return
-		case validationErrors != nil:
-			helper.FailedValidationResponse(w, r, validationErrors)
-			return
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.NotFoundResponse(w, r)
 		default:
 			helper.ServerErrorResponse(w, r, err)
-			return
 		}
+		return
 	}
 
 	if err := helper.WriteJSON(w, http.StatusOK, helper.Envelope{"movie": updatedMovie}, nil); err != nil {

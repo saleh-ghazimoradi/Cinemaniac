@@ -51,7 +51,7 @@ func (u *userRepository) GetUserByEmail(ctx context.Context, email string) (*dom
         FROM users
         WHERE email = $1`
 
-	var user *domain.User
+	user := &domain.User{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.AppConfig.CTX.Timeout)
 	defer cancel()

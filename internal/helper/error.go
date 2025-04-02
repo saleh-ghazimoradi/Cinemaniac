@@ -47,6 +47,11 @@ func FailedValidationResponse(w http.ResponseWriter, r *http.Request, errors map
 	}
 }
 
+func RateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
+	message := "rate limit exceeded"
+	ErrorResponse(w, r, http.StatusTooManyRequests, message)
+}
+
 func EditConflictResponse(w http.ResponseWriter, r *http.Request) {
 	message := "unable to update the record due to an edit conflict, please try again"
 	ErrorResponse(w, r, http.StatusConflict, message)

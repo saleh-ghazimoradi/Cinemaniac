@@ -8,9 +8,10 @@ import (
 var AppConfig *Config
 
 type Config struct {
-	Server   Server
-	Database Database
-	CTX      CTX
+	Server    Server
+	Database  Database
+	CTX       CTX
+	RateLimit RateLimit
 }
 
 type Server struct {
@@ -42,6 +43,12 @@ type Database struct {
 
 type CTX struct {
 	Timeout time.Duration `env:"CTX_TIMEOUT"`
+}
+
+type RateLimit struct {
+	RPS     float64 `env:"RATE_LIMIT_RPS"`
+	Burst   int     `env:"RATE_LIMIT_BURST"`
+	Enabled bool    `env:"RATE_LIMIT_ENABLED"`
 }
 
 func LoadConfig() error {

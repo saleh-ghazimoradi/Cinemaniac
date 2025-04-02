@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"context"
+	"errors"
 	"github.com/saleh-ghazimoradi/Cinemaniac/config"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/gateway/routes"
 	"github.com/saleh-ghazimoradi/Cinemaniac/slg"
@@ -8,6 +10,9 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func Server() error {
@@ -28,12 +33,35 @@ func Server() error {
 		ErrorLog:     slog.NewLogLogger(slg.Logger.Handler(), slog.LevelError),
 	}
 
+	shutdownError := make(chan error)
+
+	go func() {
+
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		s := <-quit
+
+		slg.Logger.Info("shutting down server", "signal", s.String())
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		shutdownError <- server.Shutdown(ctx)
+	}()
+
 	slg.Logger.Info("starting server", "addr", server.Addr, "env", config.AppConfig.Server.Env)
 
-	if err := server.ListenAndServe(); err != nil {
-		slg.Logger.Error("error starting server", "error", err)
-		os.Exit(1)
+	err = server.ListenAndServe()
+	if !errors.Is(err, http.ErrServerClosed) {
+		return err
 	}
+
+	err = <-shutdownError
+	if err != nil {
+		return err
+	}
+
+	slg.Logger.Info("stopped server", "addr", server.Addr)
 
 	return nil
 }

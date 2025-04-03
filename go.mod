@@ -8,6 +8,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/spf13/cobra v1.9.1
 	github.com/tomasen/realip v0.0.0-20180522021738-f0c99a92ddce
+	github.com/wneessen/go-mail v0.6.2
 	golang.org/x/crypto v0.36.0
 	golang.org/x/time v0.11.0
 )
@@ -15,4 +16,5 @@ require (
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
+	golang.org/x/text v0.23.0 // indirect
 )

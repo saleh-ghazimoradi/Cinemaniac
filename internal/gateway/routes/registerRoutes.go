@@ -3,12 +3,14 @@ package routes
 import (
 	"database/sql"
 	"github.com/julienschmidt/httprouter"
+	"github.com/saleh-ghazimoradi/Cinemaniac/config"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/gateway/handlers"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/helper"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/middleware"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/repository"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/service"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/transaction"
+	"github.com/saleh-ghazimoradi/Cinemaniac/pkg/notification"
 	"net/http"
 )
 
@@ -22,8 +24,9 @@ func RegisterRoutes(db *sql.DB) http.Handler {
 	userRepository := repository.NewUserRepository(db, db)
 
 	txService := transaction.NewTXService(db)
+	SMTP, _ := notification.NewMailer(config.AppConfig.SMTP.Host, config.AppConfig.SMTP.Port, config.AppConfig.SMTP.UserName, config.AppConfig.SMTP.Password, config.AppConfig.SMTP.Sender)
 	movieService := service.NewMovieService(movieRepository, txService)
-	userService := service.NewUserService(userRepository, txService)
+	userService := service.NewUserService(userRepository, txService, SMTP)
 
 	healthHandler := handlers.NewHealthHandler()
 	movieHandler := handlers.NewMovieHandler(movieService)

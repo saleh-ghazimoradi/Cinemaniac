@@ -12,6 +12,7 @@ type Config struct {
 	Database  Database
 	CTX       CTX
 	RateLimit RateLimit
+	SMTP      SMTP
 }
 
 type Server struct {
@@ -49,6 +50,14 @@ type RateLimit struct {
 	RPS     float64 `env:"RATE_LIMIT_RPS"`
 	Burst   int     `env:"RATE_LIMIT_BURST"`
 	Enabled bool    `env:"RATE_LIMIT_ENABLED"`
+}
+
+type SMTP struct {
+	Host     string `env:"SMTP_HOST"`
+	Port     int    `env:"SMTP_PORT"`
+	UserName string `env:"SMTP_USERNAME"`
+	Password string `env:"SMTP_PASSWORD"`
+	Sender   string `env:"SMTP_SENDER"`
 }
 
 func LoadConfig() error {

@@ -97,7 +97,7 @@ func (m *MovieHandler) UpdateMovieHandler(w http.ResponseWriter, r *http.Request
 			helper.FailedValidationResponse(w, r, valErr.Errors)
 			return
 		}
-		
+
 		switch {
 		case errors.Is(err, repository.ErrEditConflict):
 			helper.EditConflictResponse(w, r)

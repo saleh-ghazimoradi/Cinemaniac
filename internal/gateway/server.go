@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/saleh-ghazimoradi/Cinemaniac/config"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/gateway/routes"
+	"github.com/saleh-ghazimoradi/Cinemaniac/internal/service"
 	"github.com/saleh-ghazimoradi/Cinemaniac/slg"
 	"github.com/saleh-ghazimoradi/Cinemaniac/utils"
 	"log/slog"
@@ -46,7 +47,15 @@ func Server() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		shutdownError <- server.Shutdown(ctx)
+		err = server.Shutdown(ctx)
+		if err != nil {
+			shutdownError <- err
+		}
+
+		slg.Logger.Info("completing background tasks", "addr", server.Addr)
+
+		service.WG.Wait()
+		shutdownError <- nil
 	}()
 
 	slg.Logger.Info("starting server", "addr", server.Addr, "env", config.AppConfig.Server.Env)

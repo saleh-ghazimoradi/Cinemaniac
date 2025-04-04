@@ -22,11 +22,12 @@ func RegisterRoutes(db *sql.DB) http.Handler {
 
 	movieRepository := repository.NewMovieRepository(db, db)
 	userRepository := repository.NewUserRepository(db, db)
+	tokenRepository := repository.NewTokenRepository(db, db)
 
 	txService := transaction.NewTXService(db)
 	SMTP, _ := notification.NewMailer(config.AppConfig.SMTP.Host, config.AppConfig.SMTP.Port, config.AppConfig.SMTP.UserName, config.AppConfig.SMTP.Password, config.AppConfig.SMTP.Sender)
 	movieService := service.NewMovieService(movieRepository, txService)
-	userService := service.NewUserService(userRepository, txService, SMTP)
+	userService := service.NewUserService(userRepository, txService, SMTP, tokenRepository)
 
 	healthHandler := handlers.NewHealthHandler()
 	movieHandler := handlers.NewMovieHandler(movieService)

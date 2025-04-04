@@ -10,6 +10,8 @@ import (
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/validator"
 	"github.com/saleh-ghazimoradi/Cinemaniac/pkg/notification"
 	"github.com/saleh-ghazimoradi/Cinemaniac/slg"
+	"github.com/saleh-ghazimoradi/Cinemaniac/utils"
+	"time"
 )
 
 type UserService interface {
@@ -17,9 +19,10 @@ type UserService interface {
 }
 
 type userService struct {
-	userRepository repository.UserRepository
-	txService      transaction.TxService
-	notification   notification.Mailer
+	userRepository  repository.UserRepository
+	txService       transaction.TxService
+	notification    notification.Mailer
+	tokenRepository repository.TokenRepository
 }
 
 func (u *userService) CreateUser(ctx context.Context, input *dto.User) (*domain.User, error) {
@@ -43,15 +46,29 @@ func (u *userService) CreateUser(ctx context.Context, input *dto.User) (*domain.
 		return nil, err
 	}
 
+	var token *domain.Token
+
 	if err := u.txService.WithTx(ctx, func(tx *sql.Tx) error {
 		txUserRepo := u.userRepository.WithTx(ctx, tx)
-		return txUserRepo.CreateUser(ctx, user)
+		if err := txUserRepo.CreateUser(ctx, user); err != nil {
+			return err
+		}
+
+		token = utils.GenerateToken(user.ID, 72*time.Hour, domain.ScopeActivation)
+
+		txTokenRepo := u.tokenRepository.WithTx(ctx, tx)
+		return txTokenRepo.Insert(ctx, token)
 	}); err != nil {
 		return nil, err
 	}
 
 	background(func() {
-		err := u.notification.Send(user.Email, "user_welcome.tmpl", user)
+		data := map[string]any{
+			"activationToken": token.Plaintext,
+			"userId":          user.ID,
+		}
+
+		err := u.notification.Send(user.Email, "user_welcome.tmpl", data)
 		if err != nil {
 			slg.Logger.Error(err.Error())
 		}
@@ -60,10 +77,11 @@ func (u *userService) CreateUser(ctx context.Context, input *dto.User) (*domain.
 	return user, nil
 }
 
-func NewUserService(userRepository repository.UserRepository, txService transaction.TxService, notification notification.Mailer) UserService {
+func NewUserService(userRepository repository.UserRepository, txService transaction.TxService, notification notification.Mailer, tokenRepository repository.TokenRepository) UserService {
 	return &userService{
-		userRepository: userRepository,
-		txService:      txService,
-		notification:   notification,
+		userRepository:  userRepository,
+		txService:       txService,
+		notification:    notification,
+		tokenRepository: tokenRepository,
 	}
 }

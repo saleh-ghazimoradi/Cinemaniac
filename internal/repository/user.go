@@ -29,7 +29,7 @@ func (u *userRepository) CreateUser(ctx context.Context, user *domain.User) erro
 
 	args := []any{user.Name, user.Email, user.Password.Hash, user.Activated}
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.AppConfig.CTX.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, config.AppConfig.CTX.Timeout)
 	defer cancel()
 
 	err := exec(u.dbWrite, u.tx).QueryRowContext(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)

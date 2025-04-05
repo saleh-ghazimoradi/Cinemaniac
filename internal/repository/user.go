@@ -2,16 +2,19 @@ package repository
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"github.com/saleh-ghazimoradi/Cinemaniac/config"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
+	"time"
 )
 
 type UserRepository interface {
 	CreateUser(ctx context.Context, user *domain.User) error
 	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	UpdateUser(ctx context.Context, user *domain.User) error
+	GetForToken(ctx context.Context, tokenScope, tokenPlaintext string) (*domain.User, error)
 	WithTx(ctx context.Context, tx *sql.Tx) UserRepository
 }
 
@@ -111,6 +114,43 @@ func (u *userRepository) UpdateUser(ctx context.Context, user *domain.User) erro
 
 	return nil
 
+}
+
+func (u *userRepository) GetForToken(ctx context.Context, tokenScope, tokenPlaintext string) (*domain.User, error) {
+	tokenHash := sha256.Sum256([]byte(tokenPlaintext))
+
+	query := `
+        SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version
+        FROM users
+        INNER JOIN tokens
+        ON users.id = tokens.user_id
+        WHERE tokens.hash = $1
+        AND tokens.scope = $2 
+        AND tokens.expiry > $3`
+
+	args := []any{tokenHash[:], tokenScope, time.Now()}
+
+	var user domain.User
+	ctx, cancel := context.WithTimeout(context.Background(), config.AppConfig.CTX.Timeout)
+	defer cancel()
+
+	if err := exec(u.dbRead, u.tx).QueryRowContext(ctx, query, args...).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Name,
+		&user.Email,
+		&user.Password.Hash,
+		&user.Activated,
+		&user.Version,
+	); err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	return &user, nil
 }
 
 func (u *userRepository) WithTx(ctx context.Context, tx *sql.Tx) UserRepository {

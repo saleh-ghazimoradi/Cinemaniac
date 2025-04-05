@@ -16,6 +16,7 @@ import (
 
 type UserService interface {
 	CreateUser(ctx context.Context, input *dto.User) (*domain.User, error)
+	ActivateUser(ctx context.Context, input *dto.ActivateUserRequest) (*domain.User, error)
 }
 
 type userService struct {
@@ -73,6 +74,41 @@ func (u *userService) CreateUser(ctx context.Context, input *dto.User) (*domain.
 			slg.Logger.Error(err.Error())
 		}
 	})
+
+	return user, nil
+}
+
+func (u *userService) ActivateUser(ctx context.Context, input *dto.ActivateUserRequest) (*domain.User, error) {
+	v := validator.New()
+
+	if domain.ValidateTokenPlaintext(v, input.TokenPlaintext); !v.Valid() {
+		return nil, v.GetValidationError()
+	}
+
+	user, err := u.userRepository.GetForToken(ctx, domain.ScopeActivation, input.TokenPlaintext)
+	if err != nil {
+		return nil, err
+	}
+
+	user.Activated = true
+
+	err = u.txService.WithTx(ctx, func(tx *sql.Tx) error {
+		txUserRepo := u.userRepository.WithTx(ctx, tx)
+		txTokenRepo := u.tokenRepository.WithTx(ctx, tx)
+
+		if err := txUserRepo.UpdateUser(ctx, user); err != nil {
+			return err
+		}
+
+		if err := txTokenRepo.DeleteAllForUser(ctx, domain.ScopeActivation, user.ID); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	return user, nil
 }

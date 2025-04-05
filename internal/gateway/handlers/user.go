@@ -42,6 +42,35 @@ func (u *UserHandler) RegisterUserHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (u *UserHandler) ActivateUserHandler(w http.ResponseWriter, r *http.Request) {
+	var payload *dto.ActivateUserRequest
+
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, r, err)
+		return
+	}
+
+	user, err := u.userService.ActivateUser(r.Context(), payload)
+	if err != nil {
+		var valErr validator.ValidationError
+		switch {
+		case errors.As(err, &valErr):
+			helper.FailedValidationResponse(w, r, valErr.Errors)
+		case errors.Is(err, repository.ErrRecordNotFound):
+			helper.ErrorResponse(w, r, http.StatusUnprocessableEntity, "invalid or expired activation token")
+		case errors.Is(err, repository.ErrEditConflict):
+			helper.EditConflictResponse(w, r)
+		default:
+			helper.ServerErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	if err := helper.WriteJSON(w, http.StatusOK, helper.Envelope{"user": user}, nil); err != nil {
+		helper.ServerErrorResponse(w, r, err)
+	}
+}
+
 func NewUserHandler(userService service.UserService) *UserHandler {
 	return &UserHandler{
 		userService: userService,

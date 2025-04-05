@@ -24,7 +24,7 @@ func (t *tokenRepository) Insert(ctx context.Context, token *domain.Token) error
         INSERT INTO tokens (hash, user_id, expiry, scope) 
         VALUES ($1, $2, $3, $4)`
 
-	args := []any{token.Hash, token.UserId, token.Expiry, token.Scope}
+	args := []any{token.Hash, token.UserID, token.Expiry, token.Scope}
 
 	ctx, cancel := context.WithTimeout(ctx, config.AppConfig.CTX.Timeout)
 	defer cancel()

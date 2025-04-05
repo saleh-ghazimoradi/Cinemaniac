@@ -10,7 +10,7 @@ import (
 func GenerateToken(userId int64, ttl time.Duration, scope string) *domain.Token {
 	var token domain.Token
 	token.Plaintext = rand.Text()
-	token.UserId = userId
+	token.UserID = userId
 	token.Expiry = time.Now().Add(ttl)
 	token.Scope = scope
 	hash := sha256.Sum256([]byte(token.Plaintext))

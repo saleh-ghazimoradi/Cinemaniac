@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/dto"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/repository"
@@ -17,6 +18,7 @@ import (
 type UserService interface {
 	CreateUser(ctx context.Context, input *dto.User) (*domain.User, error)
 	ActivateUser(ctx context.Context, input *dto.ActivateUserRequest) (*domain.User, error)
+	CreateAuthenticationToken(ctx context.Context, input *dto.Token) (*domain.Token, error)
 }
 
 type userService struct {
@@ -111,6 +113,47 @@ func (u *userService) ActivateUser(ctx context.Context, input *dto.ActivateUserR
 	}
 
 	return user, nil
+}
+
+func (u *userService) CreateAuthenticationToken(ctx context.Context, input *dto.Token) (*domain.Token, error) {
+	v := validator.New()
+
+	domain.ValidateEmail(v, input.Email)
+	domain.ValidatePasswordPlaintext(v, input.Password)
+	if err := v.GetValidationError(); err != nil {
+		return nil, err
+	}
+
+	user, err := u.userRepository.GetUserByEmail(ctx, input.Email)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrRecordNotFound):
+			return nil, errors.New("invalid credentials")
+		default:
+			return nil, err
+		}
+	}
+
+	match, err := user.Password.Matches(input.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	if !match {
+		return nil, errors.New("invalid credentials")
+	}
+
+	token := utils.GenerateToken(user.ID, 24*time.Hour, domain.ScopeAuthentication)
+
+	err = u.txService.WithTx(ctx, func(tx *sql.Tx) error {
+		txTokenRepo := u.tokenRepository.WithTx(ctx, tx)
+		return txTokenRepo.Insert(ctx, token)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return token, nil
 }
 
 func NewUserService(userRepository repository.UserRepository, txService transaction.TxService, notification notification.Mailer, tokenRepository repository.TokenRepository) UserService {

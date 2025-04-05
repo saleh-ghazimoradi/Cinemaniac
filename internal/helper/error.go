@@ -47,6 +47,11 @@ func FailedValidationResponse(w http.ResponseWriter, r *http.Request, errors map
 	}
 }
 
+func InvalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
+	message := "invalid authentication credentials"
+	ErrorResponse(w, r, http.StatusUnauthorized, message)
+}
+
 func RateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
 	message := "rate limit exceeded"
 	ErrorResponse(w, r, http.StatusTooManyRequests, message)
@@ -55,6 +60,12 @@ func RateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
 func EditConflictResponse(w http.ResponseWriter, r *http.Request) {
 	message := "unable to update the record due to an edit conflict, please try again"
 	ErrorResponse(w, r, http.StatusConflict, message)
+}
+
+func InvalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("WWW-Authenticate", "Bearer")
+	message := "invalid or missing authentication token"
+	ErrorResponse(w, r, http.StatusUnauthorized, message)
 }
 
 func MethodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {

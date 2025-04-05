@@ -71,6 +71,32 @@ func (u *UserHandler) ActivateUserHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (u *UserHandler) CreateAuthenticationTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var payload *dto.Token
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, r, err)
+		return
+	}
+
+	token, err := u.userService.CreateAuthenticationToken(r.Context(), payload)
+	if err != nil {
+		var valErr validator.ValidationError
+		switch {
+		case errors.As(err, &valErr):
+			helper.FailedValidationResponse(w, r, valErr.Errors)
+		case err.Error() == "invalid credentials":
+			helper.InvalidCredentialsResponse(w, r)
+		default:
+			helper.ServerErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	if err := helper.WriteJSON(w, http.StatusCreated, helper.Envelope{"authentication_token": token}, nil); err != nil {
+		helper.ServerErrorResponse(w, r, err)
+	}
+}
+
 func NewUserHandler(userService service.UserService) *UserHandler {
 	return &UserHandler{
 		userService: userService,

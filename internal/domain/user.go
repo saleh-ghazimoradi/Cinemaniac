@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var AnonymousUser = &User{}
+
 type User struct {
 	ID        int64     `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -20,6 +22,10 @@ type User struct {
 type Password struct {
 	Plaintext *string
 	Hash      []byte
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 func (p *Password) Set(plaintextPassword string) error {

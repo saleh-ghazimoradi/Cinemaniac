@@ -37,5 +37,5 @@ func RegisterRoutes(db *sql.DB) http.Handler {
 	movieRoutes(router, movieHandler)
 	userRoutes(router, userHandler)
 
-	return middleware.RecoverPanic(middleware.RateLimit(router))
+	return middleware.RecoverPanic(middleware.RateLimit(middleware.Authenticate(userRepository, router)))
 }

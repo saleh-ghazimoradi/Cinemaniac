@@ -50,3 +50,52 @@ func Authenticate(userRepo repository.UserRepository, next http.Handler) http.Ha
 		next.ServeHTTP(w, r)
 	})
 }
+
+func RequireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := handlers.ContextGetUser(r)
+
+		if user.IsAnonymous() {
+			helper.AuthenticationRequiredResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func RequireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := handlers.ContextGetUser(r)
+
+		if !user.Activated {
+			helper.InactiveAccountResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+
+	return RequireAuthenticatedUser(fn)
+}
+
+func RequirePermission(permissionRepo repository.PermissionRepository, code string, next http.HandlerFunc) http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		user := handlers.ContextGetUser(r)
+
+		permissions, err := permissionRepo.GetAllForUser(user.ID)
+		if err != nil {
+			helper.ServerErrorResponse(w, r, err)
+			return
+		}
+
+		if !permissions.Include(code) {
+			helper.NotPermittedResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	}
+
+	return RequireActivatedUser(fn)
+}

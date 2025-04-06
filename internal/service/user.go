@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/domain"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/dto"
 	"github.com/saleh-ghazimoradi/Cinemaniac/internal/repository"
@@ -26,6 +27,7 @@ type userService struct {
 	txService       transaction.TxService
 	notification    notification.Mailer
 	tokenRepository repository.TokenRepository
+	permissions     repository.PermissionRepository
 }
 
 func (u *userService) CreateUser(ctx context.Context, input *dto.User) (*domain.User, error) {
@@ -55,6 +57,12 @@ func (u *userService) CreateUser(ctx context.Context, input *dto.User) (*domain.
 		txUserRepo := u.userRepository.WithTx(ctx, tx)
 		if err := txUserRepo.CreateUser(ctx, user); err != nil {
 			return err
+		}
+
+		txPermissionRepo := u.permissions.WithTx(ctx, tx) // Ensure transaction is used
+		if err := txPermissionRepo.AddForUser(user.ID, "movies:read"); err != nil {
+			slg.Logger.Error("failed to add permissions", "user_id", user.ID, "error", err)
+			return fmt.Errorf("error adding permissions: %w", err)
 		}
 
 		token = utils.GenerateToken(user.ID, 72*time.Hour, domain.ScopeActivation)
@@ -156,11 +164,12 @@ func (u *userService) CreateAuthenticationToken(ctx context.Context, input *dto.
 	return token, nil
 }
 
-func NewUserService(userRepository repository.UserRepository, txService transaction.TxService, notification notification.Mailer, tokenRepository repository.TokenRepository) UserService {
+func NewUserService(userRepository repository.UserRepository, txService transaction.TxService, notification notification.Mailer, tokenRepository repository.TokenRepository, permissions repository.PermissionRepository) UserService {
 	return &userService{
 		userRepository:  userRepository,
 		txService:       txService,
 		notification:    notification,
 		tokenRepository: tokenRepository,
+		permissions:     permissions,
 	}
 }

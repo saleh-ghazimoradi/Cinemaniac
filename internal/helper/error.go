@@ -72,3 +72,18 @@ func MethodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("the %s method is not supported for this resource", r.Method)
 	ErrorResponse(w, r, http.StatusMethodNotAllowed, message)
 }
+
+func AuthenticationRequiredResponse(w http.ResponseWriter, r *http.Request) {
+	message := "you must be authenticated to access this resource"
+	ErrorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+func NotPermittedResponse(w http.ResponseWriter, r *http.Request) {
+	message := "your user account does not have the necessary permissions to access this resource"
+	ErrorResponse(w, r, http.StatusForbidden, message)
+}
+
+func InactiveAccountResponse(w http.ResponseWriter, r *http.Request) {
+	message := "your user account must be activated to access this resource"
+	ErrorResponse(w, r, http.StatusForbidden, message)
+}

@@ -23,18 +23,19 @@ func RegisterRoutes(db *sql.DB) http.Handler {
 	movieRepository := repository.NewMovieRepository(db, db)
 	userRepository := repository.NewUserRepository(db, db)
 	tokenRepository := repository.NewTokenRepository(db, db)
+	permissionRepository := repository.NewPermissionRepository(db, db)
 
 	txService := transaction.NewTXService(db)
 	SMTP, _ := notification.NewMailer(config.AppConfig.SMTP.Host, config.AppConfig.SMTP.Port, config.AppConfig.SMTP.UserName, config.AppConfig.SMTP.Password, config.AppConfig.SMTP.Sender)
 	movieService := service.NewMovieService(movieRepository, txService)
-	userService := service.NewUserService(userRepository, txService, SMTP, tokenRepository)
+	userService := service.NewUserService(userRepository, txService, SMTP, tokenRepository, permissionRepository)
 
 	healthHandler := handlers.NewHealthHandler()
 	movieHandler := handlers.NewMovieHandler(movieService)
 	userHandler := handlers.NewUserHandler(userService)
 
 	healthCheckRoutes(router, healthHandler)
-	movieRoutes(router, movieHandler)
+	movieRoutes(router, movieHandler, permissionRepository)
 	userRoutes(router, userHandler)
 
 	return middleware.RecoverPanic(middleware.RateLimit(middleware.Authenticate(userRepository, router)))
